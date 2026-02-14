@@ -1,11 +1,11 @@
 # Appian Atlas Powers
 
-Persona-specific Kiro Powers for exploring Appian applications. Each power provides the same MCP tools but with tailored steering instructions for different roles.
+> **Note**: This repository has been split into separate persona-specific repositories. Please use the links below to install the power that matches your role.
 
 ## Available Powers
 
 ### 🔧 Developer
-**Path**: `developer/`  
+**Repository**: [power-appian-atlas-developer](https://github.com/ram-020998/power-appian-atlas-developer)  
 **Focus**: Technical implementation details
 
 For developers who need:
@@ -15,15 +15,15 @@ For developers who need:
 - Technical debt identification
 - Performance optimization insights
 
-**Install**:
-```bash
-kiro power add https://github.com/ram-020998/power-appian-atlas/developer
+**Install URL**:
+```
+https://github.com/ram-020998/power-appian-atlas-developer
 ```
 
 ---
 
 ### 📋 Product Owner
-**Path**: `product-owner/`  
+**Repository**: [power-appian-atlas-product-owner](https://github.com/ram-020998/power-appian-atlas-product-owner)  
 **Focus**: Business capabilities and workflows
 
 For product owners who need:
@@ -33,15 +33,15 @@ For product owners who need:
 - Business value and impact analysis
 - Stakeholder-ready documentation
 
-**Install**:
-```bash
-kiro power add https://github.com/ram-020998/power-appian-atlas/product-owner
+**Install URL**:
+```
+https://github.com/ram-020998/power-appian-atlas-product-owner
 ```
 
 ---
 
 ### 🎨 UX Designer
-**Path**: `ux-designer/`  
+**Repository**: [power-appian-atlas-ux-designer](https://github.com/ram-020998/power-appian-atlas-ux-designer)  
 **Focus**: User interfaces and interaction patterns
 
 For UX designers who need:
@@ -51,9 +51,9 @@ For UX designers who need:
 - Accessibility evaluation
 - Design improvement suggestions
 
-**Install**:
-```bash
-kiro power add https://github.com/ram-020998/power-appian-atlas/ux-designer
+**Install URL**:
+```
+https://github.com/ram-020998/power-appian-atlas-ux-designer
 ```
 
 ---
@@ -74,74 +74,19 @@ All three powers use the same **appian-atlas** MCP server, which provides tools 
 
 1. **Install the MCP server**:
    ```bash
-   pip install "appian-atlas @ git+https://github.com/ram-020998/gam-knowledge-base.git"
+   pip install "appian-atlas @ git+https://github.com/ram-020998/gam-knowledge-base.git#subdirectory=mcp_server"
    ```
 
-2. **Set GitHub token** (for accessing parsed application data):
-   ```bash
-   export GITHUB_TOKEN="your_github_token"
-   ```
+2. **Set GitHub token** (for accessing parsed application data) - See [gam-knowledge-base](https://github.com/ram-020998/gam-knowledge-base) for details
 
-3. **Choose and install a power** (see above)
+3. **Choose and install a power** (see URLs above)
 
-## Example Usage
+## Installation
 
-### Developer
-```
-User: "How does the Add Vendors action work?"
-Response: "The Add Vendors action (Record Action) triggers process model AS_GSS_PM_addVendors.
-          Entry form: AS_GSS_FM_addVendors (UUID: _a-0000e30a...)
-          Calls: AS_GSS_BL_validateVendors for validation
-          [Shows full SAIL code and dependency graph]"
-```
-
-### Product Owner
-```
-User: "How does the Add Vendors action work?"
-Response: "The Add Vendors feature allows procurement teams to add new vendors.
-          Users click 'Add Vendors' → fill form → submit → vendor is added.
-          System validates vendor name is unique and sends notifications.
-          This streamlines vendor management and maintains data quality."
-```
-
-### UX Designer
-```
-User: "How does the Add Vendors action work?"
-Response: "The Add Vendors form uses a standard form layout:
-          - Text field for vendor name (real-time validation)
-          - Email field with format validation
-          - Dropdown for category selection
-          - Text area for notes
-          - Primary 'Add Vendor' button and secondary 'Cancel' button
-          [Shows SAIL UI components and user flow diagram]"
-```
-
-## Repository Structure
-
-```
-power-appian-atlas/
-├── README.md                    # This file
-├── developer/
-│   ├── POWER.md                 # Developer steering instructions
-│   └── mcp.json                 # MCP server configuration
-├── product-owner/
-│   ├── POWER.md                 # Product Owner steering instructions
-│   └── mcp.json                 # MCP server configuration
-├── ux-designer/
-│   ├── POWER.md                 # UX Designer steering instructions
-│   └── mcp.json                 # MCP server configuration
-└── POWER.md                     # Legacy (kept for backward compatibility)
-```
-
-## Contributing
-
-To add a new persona or improve existing ones:
-
-1. Fork this repository
-2. Create or modify the persona directory
-3. Update `POWER.md` with persona-specific steering instructions
-4. Test with various queries to ensure appropriate responses
-5. Submit a pull request
+1. Open the **Powers** tab in Kiro IDE
+2. Click **Add Power**
+3. Paste the URL for your role (see above)
+4. Configure your GitHub token in the Power Config
 
 ## Related Repositories
 
