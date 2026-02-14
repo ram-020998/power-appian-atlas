@@ -1,14 +1,14 @@
 ---
-name: "gam-appian"
-displayName: "GAM Appian Knowledge Base"
-description: "Central knowledge base for all Government Acquisition Management (GAM) Appian solutions. Browse application bundles, trace dependencies, search objects, and understand architecture across all GAM applications."
-keywords: ["appian", "gam", "government acquisition", "acquisition management", "sail", "record type", "process model", "expression rule", "interface", "integration", "web api", "connected system", "cdt", "source selection", "requirements management", "appian bundle", "appian dependency"]
+name: "appian-atlas"
+displayName: "Appian Atlas"
+description: "Universal knowledge base for Appian applications. Browse application bundles, trace dependencies, search objects, and understand architecture across all Appian solutions."
+keywords: ["appian", "sail", "record type", "process model", "expression rule", "interface", "integration", "web api", "connected system", "cdt", "appian bundle", "appian dependency", "appian parser", "low-code"]
 ---
 
 # Onboarding
 
 ## Step 1: Validate knowledge base access
-Call the `list_applications` tool to verify available GAM applications. If no applications are found, a GAM application package needs to be parsed first:
+Call the `list_applications` tool to verify available Appian applications. If no applications are found, an Appian application package needs to be parsed first:
 
 ```bash
 cd /path/to/gam-appian-knowledge-base
@@ -17,7 +17,7 @@ python -m appian_parser dump <package.zip> ./data/<AppName>
 ```
 
 ## Step 2: Understand the knowledge base
-This is the central repository for all GAM Appian solution documentation. Each parsed application contains:
+This is a universal repository for Appian application documentation. Each parsed application contains:
 
 ### Core Files (Single-Fetch Orientation)
 - **app_overview.json** (~100-150KB) — Package metadata, bundle index, dependency summary, coverage stats — everything needed to navigate the app in ONE call
@@ -43,7 +43,7 @@ Bundle types:
 | web_api | Web API | Endpoint → all called rules/integrations |
 
 ## Recommended workflow
-1. `list_applications` → see all GAM apps
+1. `list_applications` → see all Appian apps
 2. `get_app_overview(app)` → **ONE call** gets full map: bundles, deps, object counts, coverage
 3. `search_objects(app, name)` → instant lookup via search_index.json (cached after first use)
 4. `get_bundle(app, bundle_id, "summary")` → loads structure.json only (5-50KB) — flow + relationships, no code
@@ -62,7 +62,7 @@ Bundle types:
 # MCP Tool Reference
 
 ## Tool: `list_applications`
-**Purpose**: Discover all available GAM applications with high-level stats.
+**Purpose**: Discover all available Appian applications with high-level stats.
 
 **Returns**: Array of applications with:
 - `name`: Application folder name
@@ -75,7 +75,7 @@ Bundle types:
 
 **Example**:
 ```
-User: "What GAM applications are available?"
+User: "What Appian applications are available?"
 → Call list_applications()
 → Returns: [{"name": "SourceSelection", "total_objects": 2327, ...}]
 ```
