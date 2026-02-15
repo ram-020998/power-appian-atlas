@@ -20,8 +20,13 @@ python -m appian_parser dump <package.zip> ./data/<AppName>
 This is a universal repository for Appian application documentation. Each parsed application contains:
 
 ### Core Files (Single-Fetch Orientation)
-- **app_overview.json** (~100-150KB) — Package metadata, bundle index, dependency summary, coverage stats — everything needed to navigate the app in ONE call
+- **app_overview.json** (~100-150KB) — Package metadata, bundle index, dependency summary, coverage stats, enrichment metadata — everything needed to navigate the app in ONE call
 - **search_index.json** (~200KB) — Flat object name lookup: `name → {type, uuid, bundles[], deps_out, deps_in}` — instant search, no scanning
+
+### Enrichment Data (NEW)
+- **enrichment/metadata.json** (~100B) — Enrichment summary: total objects, objects with depth, version
+- **enrichment/object_depths.json** (~50-100KB) — Dependency depth for all objects: `uuid → depth`
+- **enrichment/object_enrichments.json** (~300-500KB) — Full enrichment: depth, tags, statistics per object
 
 ### Bundle Structure (Layered Detail)
 - **bundles/\<bundle_id\>/structure.json** (5-50KB) — Flow structure, object relationships, NO code — fast preview
@@ -282,13 +287,251 @@ User: "Are there any unused expression rules in SourceSelection?"
 
 ---
 
+## Tool: `get_enrichment_metadata`
+**Purpose**: Get enrichment summary statistics for an application.
+
+**Args**:
+- `app_name` (required): Application name
+
+**Returns**:
+- `total_objects`: Total objects enriched
+- `objects_with_depth`: Objects with calculated dependency depth
+- `enrichment_version`: Enrichment layer version
+
+**When to use**: Check if enrichment data is available and get summary statistics.
+
+**Example**:
+```
+User: "Is enrichment data available for SourceSelection?"
+→ Call get_enrichment_metadata("SourceSelection")
+→ Returns: {total_objects: 2461, objects_with_depth: 2021, enrichment_version: "0.1.0"}
+```
+
+---
+
+## Tool: `get_object_enrichment`
+**Purpose**: Get enrichment data for a specific object (depth, tags, statistics).
+
+**Args**:
+- `app_name` (required): Application name
+- `object_uuid` (required): Object UUID
+
+**Returns**:
+- `uuid`: Object UUID
+- `dependency_depth`: Depth from entry points (0 = entry point, null = orphaned)
+- `tags[]`: Classification tags (e.g. "dashboard", "approval_workflow", "read_only")
+- `statistics`: Object statistics
+  - `dependency_count`: Number of objects this depends on
+  - `dependent_count`: Number of objects that depend on this
+  - `complexity_score`: Complexity metric (for process models)
+  - `node_count`: Number of nodes (for process models)
+
+**Available tags**:
+- Architecture: `record_driven`, `integration_heavy`, `subprocess_heavy`, `form_heavy`
+- Workflow: `conditional_workflow`, `parallel_workflow`, `approval_workflow`, `linear_workflow`
+- Data: `read_only`, `write_heavy`, `query_heavy`
+- Complexity: `simple`, `moderate`, `complex`
+- UI: `dashboard`, `form_interface`, `report`
+- Integration: `has_integrations`, `has_web_api`, `has_database`
+
+**When to use**: Understanding object characteristics, prioritizing by depth, filtering by tags.
+
+**Example**:
+```
+User: "What's the dependency depth of AS_GSS_FM_addVendors?"
+→ First: search_objects("SourceSelection", "addVendors") to get UUID
+→ Then: get_object_enrichment("SourceSelection", uuid)
+→ Returns: {dependency_depth: 0, tags: ["form_interface"], statistics: {...}}
+```
+
+---
+
+## Tool: `get_dependency_depths`
+**Purpose**: Get dependency depths for all objects, optionally filtered by max depth.
+
+**Args**:
+- `app_name` (required): Application name
+- `max_depth` (optional): Maximum depth to include (e.g. 2 for entry points + first two levels)
+
+**Returns**: Dictionary mapping UUID to depth: `{"uuid": depth}`
+
+**When to use**: Understanding architecture layers, finding entry points, analyzing depth distribution.
+
+**Example**:
+```
+User: "Show me the dependency depth distribution for SourceSelection"
+→ Call get_dependency_depths("SourceSelection")
+→ Returns: {"uuid-1": 0, "uuid-2": 1, "uuid-3": 2, ...}
+
+User: "Show me only entry points and first-level dependencies"
+→ Call get_dependency_depths("SourceSelection", max_depth=1)
+→ Returns: {"uuid-1": 0, "uuid-2": 0, "uuid-3": 1, ...}
+```
+
+---
+
+## Tool: `search_by_depth`
+**Purpose**: Find all objects at a specific dependency depth.
+
+**Args**:
+- `app_name` (required): Application name
+- `depth` (required): Dependency depth to search for (0 = entry points)
+
+**Returns**: Array of objects (max 100) with:
+- `name`: Object name
+- `uuid`: Object UUID
+- `type`: Object type
+- `depth`: Dependency depth
+
+**When to use**: Finding entry points (depth 0), exploring architecture layers, prioritizing context.
+
+**Example**:
+```
+User: "What are the entry points in SourceSelection?"
+→ Call search_by_depth("SourceSelection", 0)
+→ Returns: [{name: "AS_GSS_FM_addVendors", type: "Interface", depth: 0}, ...]
+
+User: "Show me objects at the second dependency level"
+→ Call search_by_depth("SourceSelection", 2)
+→ Returns: [{name: "AS_CO_UT_filterCdt", type: "Expression Rule", depth: 2}, ...]
+```
+
+---
+
+## Tool: `search_by_tags`
+**Purpose**: Find objects with specific classification tags.
+
+**Args**:
+- `app_name` (required): Application name
+- `tags` (required): Array of tags to search for (objects must have ALL specified tags)
+
+**Returns**: Array of objects (max 100) with:
+- `name`: Object name
+- `uuid`: Object UUID
+- `type`: Object type
+- `tags[]`: All tags for this object
+- `depth`: Dependency depth (may be null)
+
+**When to use**: Finding specific patterns (dashboards, approval workflows, etc.), filtering by characteristics.
+
+**Example**:
+```
+User: "Find all read-only dashboards in SourceSelection"
+→ Call search_by_tags("SourceSelection", ["dashboard", "read_only"])
+→ Returns: [{name: "AS_GSS_Dashboard", type: "Interface", tags: ["dashboard", "read_only"], depth: 0}]
+
+User: "Find all approval workflows"
+→ Call search_by_tags("SourceSelection", ["approval_workflow"])
+→ Returns: [{name: "AS_GSS_PM_approveVendor", type: "Process Model", tags: ["approval_workflow", "simple"], depth: 1}]
+
+User: "Find complex integration-heavy processes"
+→ Call search_by_tags("SourceSelection", ["integration_heavy", "complex"])
+→ Returns: [...]
+```
+
+---
+
+## Tool: `get_statistics` 🆕
+**Purpose**: Get aggregated statistics without loading full data. Instant answers to "how many" questions.
+
+**Args**:
+- `app_name` (required): Application name
+- `stat_type` (required): Type of statistics:
+  - `tag_distribution` - Count of objects per classification tag
+  - `depth_distribution` - Count of objects per dependency depth
+  - `type_distribution` - Count of objects per type
+  - `bundle_complexity` - Bundles sorted by object count
+  - `object_reuse` - Objects sorted by dependent_count (most reused first)
+  - `orphan_summary` - Orphan counts by type
+- `filters` (optional): Filters like `{"limit": 10, "min_count": 5}`
+
+**When to use**: Counting, distribution analysis, finding most/least complex bundles.
+
+**Example**:
+```
+User: "How many approval workflows are there?"
+→ Call get_statistics("SourceSelection", "tag_distribution")
+→ Returns: {"tag_distribution": {"approval_workflow": 15, "dashboard": 8, ...}}
+
+User: "What are the most complex bundles?"
+→ Call get_statistics("SourceSelection", "bundle_complexity", {"limit": 5})
+→ Returns: {"bundle_complexity": [{id: "...", root_name: "...", object_count: 637}, ...]}
+
+User: "Which objects are most reused?"
+→ Call get_statistics("SourceSelection", "object_reuse", {"limit": 10, "min_count": 5})
+→ Returns: {"object_reuse": [{name: "...", type: "...", dependent_count: 42}, ...]}
+```
+
+---
+
+## Tool: `batch_get` 🆕
+**Purpose**: Get multiple objects/bundles in one call. Reduces N calls to 1.
+
+**Args**:
+- `app_name` (required): Application name
+- `operation` (required): Type of batch operation:
+  - `objects` - Get multiple object details by UUID
+  - `bundles` - Get multiple bundles by ID
+  - `enrichments` - Get enrichment data for multiple objects
+  - `dependencies` - Get dependencies for multiple objects by name
+- `identifiers` (required): List of UUIDs, bundle IDs, or object names
+- `options` (optional): Settings like `{"detail_level": "summary"}`
+
+**When to use**: Loading multiple objects for comparison, getting details for a list.
+
+**Example**:
+```
+User: "Compare these three interfaces"
+→ Call batch_get("SourceSelection", "objects", [uuid1, uuid2, uuid3])
+→ Returns: [{uuid: "...", data: {...}}, ...]
+
+User: "Load enrichment data for these objects"
+→ Call batch_get("SourceSelection", "enrichments", [uuid1, uuid2, uuid3])
+→ Returns: [{uuid: "...", data: {depth: 2, tags: [...]}}, ...]
+```
+
+---
+
+## Tool: `smart_query` 🆕
+**Purpose**: Common query patterns in one call. Combines search + load operations.
+
+**Args**:
+- `app_name` (required): Application name
+- `query_type` (required): Type of smart query:
+  - `find_and_load_bundle` - Search for bundle by name and load it
+  - `find_and_get_object` - Search for object by name and get full details
+  - `get_bundle_summary` - Get just bundle metadata without loading full data
+  - `count_by_tag` - Count objects with specific tags
+  - `most_reused` - Get top N most-reused objects with details
+- `**params`: Query-specific parameters (query, bundle_type, detail_level, tags, limit, etc.)
+
+**When to use**: Common find-and-load patterns, counting by tag, finding most reused objects.
+
+**Example**:
+```
+User: "Show me the Add Vendor action"
+→ Call smart_query("SourceSelection", "find_and_load_bundle", query="Add Vendor", detail_level="summary")
+→ Returns: {search_results: [...], loaded_bundle: {...}, bundle_id: "..."}
+
+User: "How many approval workflows?"
+→ Call smart_query("SourceSelection", "count_by_tag", tags=["approval_workflow"])
+→ Returns: {tags: ["approval_workflow"], count: 15, sample_objects: [...]}
+
+User: "What are the top 5 most reused objects?"
+→ Call smart_query("SourceSelection", "most_reused", limit=5)
+→ Returns: {most_reused: [{name: "...", dependent_count: 42, depth: 3, tags: [...]}, ...]}
+```
+
+---
+
 # Typical Query Patterns
 
 ## Pattern 1: Explore an application
 ```
 1. list_applications() → see all apps
-2. get_app_overview("AppName") → full map
+2. get_app_overview("AppName") → full map (includes enrichment metadata if available)
 3. Review bundles[] and dependency_summary
+4. get_enrichment_metadata("AppName") → check enrichment availability
 ```
 
 ## Pattern 2: Find and analyze specific functionality
@@ -303,14 +546,16 @@ User: "Are there any unused expression rules in SourceSelection?"
 ```
 1. search_objects("AppName", "object_name") → find object
 2. get_dependencies("AppName", "object_name") → see calls/called_by
-3. For each dependency, repeat step 2 to build full graph
+3. get_object_enrichment("AppName", uuid) → get depth and tags
+4. For each dependency, repeat steps 2-3 to build full graph
 ```
 
 ## Pattern 4: Impact analysis
 ```
 1. get_dependencies("AppName", "shared_utility") → see called_by[]
 2. For each caller, get_object_detail() to see which bundles use it
-3. Assess impact scope across bundles
+3. get_object_enrichment() for each to understand depth and characteristics
+4. Assess impact scope across bundles
 ```
 
 ## Pattern 5: Find unused code
@@ -318,6 +563,64 @@ User: "Are there any unused expression rules in SourceSelection?"
 1. list_orphans("AppName") → see unbundled objects
 2. Filter by_type for specific object types
 3. get_orphan("AppName", uuid) → inspect individual orphans
+```
+
+## Pattern 6: Explore architecture layers (NEW)
+```
+1. get_enrichment_metadata("AppName") → verify enrichment available
+2. search_by_depth("AppName", 0) → find all entry points
+3. search_by_depth("AppName", 1) → find first-level dependencies
+4. get_dependency_depths("AppName", max_depth=3) → get shallow objects only
+```
+
+## Pattern 7: Find specific patterns (NEW)
+```
+1. search_by_tags("AppName", ["dashboard"]) → find all dashboards
+2. search_by_tags("AppName", ["approval_workflow"]) → find approval processes
+3. search_by_tags("AppName", ["integration_heavy", "complex"]) → find complex integrations
+4. For each result, get_bundle() or get_object_detail() for more info
+```
+
+## Pattern 8: Prioritize context by depth (NEW)
+```
+1. search_by_depth("AppName", 0) → start with entry points
+2. For each entry point, get_dependencies() → see what it calls
+3. search_by_depth("AppName", 1) → explore first level
+4. Continue level by level, prioritizing shallow objects
+```
+
+## Pattern 9: Analyze object characteristics (NEW)
+```
+1. search_objects("AppName", "object_name") → find object
+2. get_object_enrichment("AppName", uuid) → get depth, tags, statistics
+3. Use depth to understand position in architecture
+4. Use tags to understand patterns and characteristics
+5. Use statistics to understand complexity and reuse
+```
+
+## Pattern 10: Quick statistics and counts (NEW - Phase 1) 🆕
+```
+1. get_statistics("AppName", "tag_distribution") → count objects by tag
+2. get_statistics("AppName", "depth_distribution") → count objects by depth
+3. get_statistics("AppName", "bundle_complexity") → find most complex bundles
+4. get_statistics("AppName", "object_reuse") → find most reused objects
+→ All instant, no need to load full data
+```
+
+## Pattern 11: Batch operations for efficiency (NEW - Phase 1) 🆕
+```
+1. Collect list of UUIDs/IDs to fetch
+2. batch_get("AppName", "enrichments", [uuid1, uuid2, ...]) → get all enrichments in one call
+3. batch_get("AppName", "objects", [uuid1, uuid2, ...]) → get all object details in one call
+→ Reduces N calls to 1, much faster
+```
+
+## Pattern 12: Smart queries for common tasks (NEW - Phase 1) 🆕
+```
+1. smart_query("AppName", "find_and_load_bundle", query="keyword") → search + load in one call
+2. smart_query("AppName", "count_by_tag", tags=["approval_workflow"]) → instant count
+3. smart_query("AppName", "most_reused", limit=10) → top reused objects with enrichment
+→ Combines multiple operations, fewer round trips
 ```
 
 ---
